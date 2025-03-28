@@ -1,39 +1,31 @@
-import { Response } from 'express';
-import Book, { IBook }  from '../models/book';
+import Book  from '../models/book';
 import BookInstance, { IBookInstance }  from '../models/bookinstance';
+import express from 'express';
+
+import { validateIdMiddleware, RequestWithSanitizedId } from '../sanitizers/idSanitizer'
+
+const router = express.Router();
 
 
-// Function to get a book by ID
-async function getBook(id: string): Promise<IBook | null> {
-  if (typeof id !== 'string') {
-    return null;
-  }
-  return Book.findOne({ _id: id }).populate('author').exec();
-}
-
-// Function to get book details
-async function getBookDtl(id: string): Promise<IBookInstance[] | null> {
-  if (typeof id !== 'string') {
-    return null;
-  }
-  return BookInstance.find({ book: id }).select('imprint status').exec();
-}
-
-// Function to handle showing book details
-export const showBookDtls = async (res: Response, id: string): Promise<void> => {
+/**
+ * @route GET /book_dtls
+ * @group resource - the details of a book
+ * @param {string} id.query - the book id
+ * @returns an object with the book title string, author name string, and an array of bookInstances
+ * @returns 404 - if the book is not found
+ * @returns 500 - if there is an error in the database
+ */
+router.get('/', validateIdMiddleware, async (req: RequestWithSanitizedId, res) => {
+  const id = req.sanitizedId
   try {
     const [book, copies] = await Promise.all([
-      getBook(id),
-      getBookDtl(id)
+      Book.getBook(id),
+      BookInstance.getBookDetails(id)
     ]);
-    
+    console.log('book:', book);
+    console.log('copies:', copies);
     if (!book) {
       res.status(404).send(`Book ${id} not found`);
-      return;
-    }
-
-    if(!copies) {
-      res.status(404).send(`Book details not found for book ${id}`);
       return;
     }
 
@@ -43,6 +35,9 @@ export const showBookDtls = async (res: Response, id: string): Promise<void> => 
       copies: copies
     });
   } catch (err) {
+    console.error('Error fetching book:', err);
     res.status(500).send(`Error fetching book ${id}`);
   }
-};
+});
+
+export default router;

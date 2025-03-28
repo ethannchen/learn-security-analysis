@@ -1,19 +1,22 @@
 import { Response } from 'express';
 import BookInstance, { IBookInstance } from '../models/bookinstance';
+import express from 'express';
 
-// Function to show all books with status "Available"
-export const showAllBooksStatus = async (res: Response): Promise<void> => {
+const router = express.Router();
+
+/**
+ * @route GET /available
+ * @returns {object} 200 - An array of available books
+ * @returns {Error}  500 - if an error occurs when fetching the books
+ */
+router.get('/', async (_, res: Response) => {
   try {
-    const listBookInstances: IBookInstance[]
-      = await BookInstance
-        .find({ status: { $eq: 'Available' } })
-        .populate('book')
-    const results = listBookInstances.map((bookInstance: IBookInstance) => {
-      return `${bookInstance.book.title} : ${bookInstance.status}`;
-    });
+    const results = await BookInstance.getAllBookStatuses();
     res.status(200).send(results);
   }
   catch (err) {
     res.status(500).send('Status not found');
   }
-};
+});
+
+export default router;

@@ -1,83 +1,48 @@
-import express, { Request, Response } from 'express';
-import cors from 'cors';
-import bodyParser from 'body-parser';
-import mongoose from 'mongoose';
+import express from "express";
+import cors from "cors";
+import mongoose from "mongoose";
+import homeRouter from "./pages/home";
+import availableRouter from "./pages/books_status";
+import bookRouter from "./pages/books";
+import authorRouter from "./pages/authors";
+import createBookRouter from "./pages/create_book";
+import bookDetailsRouter from "./pages/book_details";
 
-import * as Home from './pages/home';
-import * as Books from './pages/books';
-import * as BooksStatus from './pages/books_status';
-import * as Authors from './pages/authors';
-import * as BookDetails from './pages/book_details';
-import * as CreateBook from './pages/create_book';
+import { appRateLimiter } from "./sanitizers/rateLimiter";
 
-import { validateIdMiddleware, RequestWithSanitizedId } from './sanitizers/idSanitizer';
-import { validateBookDetailsMiddleware, RequestWithSanitizedBookDetails } from './sanitizers/bookSanitizer';
-import { appRateLimiter } from './sanitizers/rateLimiter';
-
+// Create express app
 const app = express();
-const port = 8000; 
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
-});
-
-const mongoDB = 'mongodb://127.0.0.1:27017/my_library_db';
-mongoose.connect(mongoDB);
-const db = mongoose.connection;
-
-db.on('error', console.error.bind(console, 'MongoDB connection error:'));
-db.on('connected', () => {
-  console.log('Connected to database');
-});
-
-
-
-// CORS policy: Allow requests from http://localhost:3000
+// Middleware
 app.use(cors(
-  {
-    origin: 'http://localhost:3000'
-  }
+    {
+        origin: 'http://localhost:3000'
+    }
 ));
 app.use(appRateLimiter);
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.json());
+app.use('/home', homeRouter);
+app.use('/available', availableRouter);
+app.use('/books', bookRouter);
+app.use('/authors', authorRouter);
+app.use('/book_dtls', bookDetailsRouter);
+app.use('/newbook', createBookRouter);
 
-app.get('/home', (_, res: Response) => {
-  Home.show_home(res);
-});
-
-app.get('/available', (_, res: Response) => {
-  BooksStatus.showAllBooksStatus(res);
-});
-
-app.get('/books', async (_, res: Response) => {
-  try {
-    const data = await Books.showBooks();
-    res.send(data);
-  } catch {
-    res.send('No books found');
-  }
-});
-
-app.get('/authors', (_, res: Response) => {
-  Authors.showAllAuthors(res);
-});
-
-app.get('/book_dtls', validateIdMiddleware, (req: RequestWithSanitizedId, res: Response) => {
-  const id = req.sanitizedId;
-  if(id)
-    BookDetails.showBookDtls(res, id);
-  else
-    res.status(400).send("Invalid ID: ID must be a string.");
-});
-
-app.post('/newbook', validateBookDetailsMiddleware, (req: RequestWithSanitizedBookDetails, res: Response) => {
-  const { familyName, firstName, genreName, bookTitle } = req;
-  if (familyName && firstName && genreName && bookTitle) {
-    CreateBook.new_book(res, familyName, firstName, genreName, bookTitle).catch(err => {
-      res.send('Failed to create new book ' + err);
+// Start server only if not in test environment
+if (process.env.NODE_ENV !== "test") {
+    const port = 8000;
+    app.listen(port, () => {
+        console.log(`Server listening on port ${port}`);
     });
-  } else {
-    res.send('Invalid Inputs');
-  }
-});
+
+    // Connect to MongoDB only in non-test environments
+    const mongoDB = 'mongodb://127.0.0.1:27017/my_library_db';
+    mongoose.connect(mongoDB);
+    const db = mongoose.connection;
+
+    db.on('error', console.error.bind(console, 'MongoDB connection error:'));
+    db.on('connected', () => {
+        console.log('Connected to database');
+    });
+}
+
+export default app; // Export only the Express app
