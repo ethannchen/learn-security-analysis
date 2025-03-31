@@ -53,18 +53,6 @@ describe("Verify GET /book_dtls/:id", () => {
         expect(response.body).toStrictEqual(expectedResponse);
     });
 
-    it("should respond with 404 if book id is empty", async () => {  
-        Book.getBook = jest.fn().mockImplementationOnce((id) => {
-            if (id.length === 0) {
-                return Promise.resolve(null);
-            }
-            return Promise.resolve({});
-        });
-        BookInstance.getBookDetails = jest.fn().mockResolvedValue([]);
-        const response = await request(app).get("/book_dtls?id=");
-        expect(response.statusCode).toBe(400);
-    });
-
     it("should respond with 404 if book is not found", async () => {
         Book.getBook = jest.fn().mockResolvedValue(null);
         BookInstance.getBookDetails = jest.fn().mockResolvedValue([]);
@@ -98,5 +86,17 @@ describe("Verify GET /book_dtls/:id", () => {
         expect(response.statusCode).toBe(500);
         expect(response.text).toBe(`Error fetching book ${mockBookId}`);
         expect(consoleSpy).toHaveBeenCalled();  
+    });
+
+    it("should respond with 400 if book id is empty", async () => {  
+        const response = await request(app).get("/book_dtls?id=");
+        expect(response.statusCode).toBe(400);
+    });
+
+    it("should respond with 400 if book id is not a valid mongoose id", async () => {
+        // Potentially malicious script as id
+        const invalidId = "<script> document.body.innerHTML = \"<a href='https://google.com'> Gotcha </a>\"</script>";
+        const response = await request(app).get(`/book_dtls?id=${invalidId}`);
+        expect(response.statusCode).toBe(400);
     });
 });
