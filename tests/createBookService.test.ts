@@ -47,7 +47,7 @@ describe("Verify POST /create_book", () => {
         expect(response.text).toBe('Error creating book: Gora');
     });
 
-    it("should return error message with status 200 for invalid inputs", async () => {
+    it("should return error message with status 400 for absent properties", async () => {
         const mockReqBody = {
             familyName: "Tagore",
             firstName: "Robi",
@@ -56,7 +56,19 @@ describe("Verify POST /create_book", () => {
         const response = await request(app)
             .post('/newbook')
             .send(mockReqBody);
-        expect(response.statusCode).toBe(200);
-        expect(response.text).toBe('Invalid Inputs');
+        expect(response.statusCode).toBe(400);
+    });
+
+    it("should return error message with status 400 for malicious inputs", async () => {
+        const mockReqBody = {
+            familyName: {"$ne": ""}, // This is a malicious input that could result in a no sql injection
+            firstName: "Robi",
+            genreName: "Fiction",
+            bookTitle: "Gora"
+        }
+        const response = await request(app)
+            .post('/newbook')
+            .send(mockReqBody);
+        expect(response.statusCode).toBe(400);
     });
 });
