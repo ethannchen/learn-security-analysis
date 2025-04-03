@@ -1,4 +1,5 @@
 .DS_Store
+codeql-db
 package-lock.json
 library-server-codeql-db/
 # Logs
